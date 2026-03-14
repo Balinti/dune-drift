@@ -3,802 +3,774 @@
 <head>
   <meta charset="UTF-8">
   <title>Dune Drift - Free HTML5 Game</title>
-  <meta name="description" content="Play Dune Drift - Swipe to guide a sand surfer through shifting dunes as the palette evolves from warm to cool tones.">
+  <meta name="description" content="Play Dune Drift - Dodge falling sandstorms while chaining combos to boost your score in a sun-scorched desert.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1a0a00">
-
+  <meta name="theme-color" content="#0b0f1a">
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Dune Drift - Free HTML5 Game">
-  <meta property="og:description" content="Guide a sand surfer through shifting dunes. Tap to carve, release to glide. How far can you ride?">
+  <meta property="og:description" content="Play Dune Drift - Dodge falling sandstorms while chaining combos to boost your score in a sun-scorched desert.">
   <meta property="og:url" content="https://balinti.github.io/dune-drift/">
   <meta property="og:image" content="https://balinti.github.io/dune-drift/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:site_name" content="Dune Drift">
-
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Dune Drift - Free HTML5 Game">
-  <meta name="twitter:description" content="Guide a sand surfer through shifting dunes. Tap to carve, release to glide. How far can you ride?">
+  <meta name="twitter:description" content="Play Dune Drift - Dodge falling sandstorms while chaining combos to boost your score in a sun-scorched desert.">
   <meta name="twitter:image" content="https://balinti.github.io/dune-drift/og-image.png">
-
-  <link rel="canonical" href="https://balinti.github.io/dune-drift/">
-
   <!-- AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
-
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body{
-      width:100%;height:100%;
-      background:#0d0500;
-      display:flex;align-items:center;justify-content:center;
-      overflow:hidden;font-family:system-ui,sans-serif;
-      touch-action:none;user-select:none;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: linear-gradient(160deg, #0b0f1a 0%, #111827 50%, #0d1520 100%);
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #c8d8e8;
+      overflow-x: hidden;
     }
-    #wrap{
-      position:relative;
-      width:100%;max-width:420px;
-      height:100vh;max-height:750px;
-      overflow:hidden;
+    #wrap {
+      position: relative;
+      width: min(420px, 100vw);
+      height: min(750px, 100vh);
+      flex-shrink: 0;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    canvas{display:block;width:100%;height:100%;cursor:pointer;}
-    #seo{
-      position:absolute;width:1px;height:1px;overflow:hidden;
-      clip:rect(0,0,0,0);white-space:nowrap;border:0;
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
     }
+    .overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: rgba(11,15,26,0.82);
+      backdrop-filter: blur(4px);
+      transition: opacity 0.3s;
+    }
+    .overlay.hidden { opacity: 0; pointer-events: none; }
+    .overlay h1 {
+      font-size: clamp(2rem, 10vw, 3.2rem);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      background: linear-gradient(135deg, #f4d080 0%, #e06c2a 50%, #c0392b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.3em;
+    }
+    .overlay .hook {
+      font-size: clamp(0.75rem, 3.5vw, 1rem);
+      color: #a0b4c8;
+      margin-bottom: 1.6em;
+      text-align: center;
+      padding: 0 1.2em;
+    }
+    .overlay .tap-hint {
+      font-size: clamp(1rem, 4.5vw, 1.3rem);
+      font-weight: 700;
+      color: #f4d080;
+      animation: pulse 1.4s ease-in-out infinite;
+      letter-spacing: 0.06em;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.5; transform:scale(0.97); }
+    }
+    .scores-panel {
+      margin: 1.2em 0 0.8em;
+      text-align: center;
+    }
+    .scores-panel .lbl { color:#607080; font-size:0.76rem; text-transform:uppercase; letter-spacing:0.1em; }
+    .scores-panel .val { color:#f4d080; font-size:1.4rem; font-weight:800; line-height:1.2; }
+    .scores-panel .sub { color:#a0b4c8; font-size:0.88rem; }
+    .scores-panel .row { display:flex; gap:2em; justify-content:center; margin-top:0.7em; }
+    .go-reason { color:#e07070; font-size:1rem; font-weight:700; margin-bottom:0.3em; letter-spacing:0.08em; }
+    .share-btn {
+      margin-top:1em;
+      padding:0.5em 1.4em;
+      border:2px solid #f4d080;
+      border-radius:999px;
+      background:transparent;
+      color:#f4d080;
+      font-size:0.9rem; font-weight:700;
+      cursor:pointer; letter-spacing:0.06em;
+      transition:background 0.2s, color 0.2s;
+    }
+    .share-btn:hover { background:#f4d080; color:#0b0f1a; }
+    #challenge-banner {
+      position:absolute; top:0; left:0; right:0;
+      background:rgba(244,208,128,0.12);
+      border-bottom:1px solid rgba(244,208,128,0.28);
+      text-align:center; padding:0.5em 1em;
+      font-size:0.8rem; color:#f4d080;
+      pointer-events:none;
+      display:none;
+    }
+    #about {
+      width:min(420px,100vw);
+      padding:1.4em 1.2em 2.4em;
+      color:#607888; font-size:0.82rem; line-height:1.6;
+    }
+    #about h2 { color:#8099a8; font-size:1rem; margin-bottom:0.4em; font-weight:700; }
+    #about p  { margin-bottom:0.8em; }
+    #about ul { padding-left:1.2em; margin-bottom:0.8em; }
+    #about li { margin-bottom:0.3em; }
   </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="c"></canvas>
-  <div id="seo" aria-hidden="true">
-    <h1>Dune Drift — Free Browser HTML5 Game</h1>
-    <p>Dune Drift is a free hyper-casual HTML5 canvas game. You control a sand surfer riding the glowing crest of ever-shifting desert dunes. Tap and hold to carve tight arcs; release to glide at speed. Thread through Wind Gates to stack your combo multiplier. Dodge rocks lurking off the crest for near-miss bonuses. The colour palette shifts from warm amber to cool indigo as your combo grows. Features: combo multiplier, Wind Gates, near-miss bonuses, crosswind events telegraphed by sand streaks, hit-stop on perfect gate centres, particle sand spray, screen shake, high-DPI canvas, and local best-score persistence.</p>
+
+  <!-- Start overlay -->
+  <div class="overlay" id="overlay-start">
+    <h1>Dune Drift</h1>
+    <div class="hook">Graze edges to build multiplier &mdash; don't get swallowed by the storm</div>
+    <div class="tap-hint">Tap to Start</div>
+    <div id="challenge-banner"></div>
+  </div>
+
+  <!-- Gameover overlay -->
+  <div class="overlay hidden" id="overlay-gameover">
+    <h1 style="font-size:clamp(1.4rem,7vw,2.2rem);margin-bottom:0.1em">Game Over</h1>
+    <div class="go-reason" id="go-reason">HIT</div>
+    <div class="scores-panel">
+      <div class="lbl">Score</div>
+      <div class="val" id="go-score">0</div>
+      <div class="sub" id="go-best"></div>
+      <div class="row">
+        <div><div class="lbl">Best&nbsp;Mult</div><div class="val" id="go-mult">x1</div></div>
+        <div><div class="lbl">Graze&nbsp;Streak</div><div class="val" id="go-streak">0</div></div>
+      </div>
+    </div>
+    <div class="tap-hint" style="margin-top:0.8em">Tap to Retry</div>
+    <button class="share-btn" id="share-btn">Challenge a Friend</button>
   </div>
 </div>
 
+<section id="about">
+  <h2>About Dune Drift</h2>
+  <p>Dune Drift is a free hyper-casual HTML5 browser game. Pilot a sand skimmer through an endless desert storm, dodging falling lane-walls. Graze wall edges to build your combo multiplier and chase the highest score possible on the shifting dune field.</p>
+  <h2>How to Play</h2>
+  <ul>
+    <li><strong>Tap / Space / Enter</strong> &mdash; Drift-dash to the opposite lane</li>
+    <li>Graze a storm wall edge to extend your combo streak and earn bonus points</li>
+    <li>Higher combo = higher multiplier = more points per second</li>
+    <li>Missing a graze resets your combo but the run continues</li>
+    <li>A direct hit ends the run &mdash; avoid solid walls!</li>
+  </ul>
+  <p>The dune field drifts left and right over time, and after 60 seconds occasional sand gusts push lanes sideways. Stay sharp, keep combos going, and share your best multiplier with friends!</p>
+  <p><em>Keywords: dune drift, free html5 game, hyper casual, desert game, dodge game, combo multiplier, browser game, mobile game, canvas game, sand skimmer</em></p>
+</section>
+
 <script>
-(()=>{
+(function(){
 'use strict';
 
-// ─── Canvas ──────────────────────────────────────────────────────────────────
-const wrap   = document.getElementById('wrap');
-const canvas = document.getElementById('c');
-const ctx    = canvas.getContext('2d');
-let W=0, H=0, DPR=1;
+// ── Constants ─────────────────────────────────────────────────────────────────
+const NUM_LANES   = 3;
+const PLAYER_R    = 14;   // css px
+const WALL_H      = 22;   // css px
+const GRAZE_PX    = 18;   // graze proximity beyond player edge
+const PLAYER_Y_FR = 0.78; // player vertical fraction of canvas height
+const DASH_SPEED  = 0.14; // progress per frame at 60fps scale (unitless lerp speed)
 
-function resize(){
-  DPR = devicePixelRatio||1;
-  W   = wrap.clientWidth;
-  H   = wrap.clientHeight;
-  canvas.width  = W*DPR;
-  canvas.height = H*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  rebuildBgPattern();
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const wrap            = document.getElementById('wrap');
+const canvas          = document.getElementById('c');
+const ctx             = canvas.getContext('2d');
+const overlayStart    = document.getElementById('overlay-start');
+const overlayGameover = document.getElementById('overlay-gameover');
+const goScoreEl       = document.getElementById('go-score');
+const goBestEl        = document.getElementById('go-best');
+const goMultEl        = document.getElementById('go-mult');
+const goStreakEl      = document.getElementById('go-streak');
+const goReasonEl      = document.getElementById('go-reason');
+const shareBtn        = document.getElementById('share-btn');
+const challengeBanner = document.getElementById('challenge-banner');
+
+// ── Canvas sizing ─────────────────────────────────────────────────────────────
+let W, H, dpr;
+function resizeCanvas() {
+  const rect = wrap.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = rect.width;
+  H = rect.height;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-addEventListener('resize', resize);
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
-// ─── LocalStorage ─────────────────────────────────────────────────────────────
-let bestScore = +localStorage.getItem('dd_best')||0;
-let bestComboEver = +localStorage.getItem('dd_bestcombo')||0;
+// ── State machine ─────────────────────────────────────────────────────────────
+let state = 'start'; // 'start' | 'playing' | 'gameover'
 
-// ─── States ───────────────────────────────────────────────────────────────────
-const S={START:0,PLAY:1,OVER:2};
-let state=S.START;
+// Run variables
+let score, multiplier, combo, bestMult, longestStreak, curStreak, runElapsed;
+let shakeAmt, shakeFade, bgHue;
+let playerLane, playerX, playerTargetX, dashProgress, lastDashDir, playerFlash;
+let afterimages, particles, rows, hudEvent;
+let laneOffsetX, laneOffsetTarget, gustActive, gustTimer, gustCooldown;
+let lastTime = 0;
 
-// ─── Input ────────────────────────────────────────────────────────────────────
-let hold=false;
-canvas.addEventListener('pointerdown', e=>{ e.preventDefault(); onPress(); },  {passive:false});
-canvas.addEventListener('pointerup',   ()=>{ hold=false; });
-canvas.addEventListener('pointercancel',()=>{ hold=false; });
-addEventListener('keydown', e=>{
-  if(e.code==='Space'||e.code==='Enter'){ e.preventDefault(); onPress(); }
-});
-addEventListener('keyup', e=>{
-  if(e.code==='Space'||e.code==='Enter') hold=false;
-});
+let sessionBest = parseInt(localStorage.getItem('duneDrift_best') || '0', 10);
 
-// Game-over button hit areas
-let btnA=null, btnB=null;
-canvas.addEventListener('pointerdown', e=>{
-  if(state!==S.OVER) return;
-  const r=canvas.getBoundingClientRect();
-  const cx=(e.clientX-r.left)*(W/r.width);
-  const cy=(e.clientY-r.top)*(H/r.height);
-  if(btnA && hit(cx,cy,btnA)){ doShare(false); return; }
-  if(btnB && hit(cx,cy,btnB)){ doShare(true);  return; }
-}, true);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const lerp  = (a,b,t) => a + (b-a)*t;
+const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+const rnd   = (lo,hi) => lo + Math.random()*(hi-lo);
+const rndI  = (lo,hi) => Math.floor(rnd(lo, hi+1));
+const easeO = t => 1-(1-t)*(1-t);
 
-function hit(x,y,b){ return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h; }
+// ── Lane geometry ─────────────────────────────────────────────────────────────
+function laneW() { return W / NUM_LANES; }
+function laneX(lane) { return laneW() * lane + laneW() * 0.5 + laneOffsetX; }
 
-function onPress(){
-  if(state===S.PLAY){ hold=true; return; }
-  startGame();
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initGame() {
+  score = 0; multiplier = 1; combo = 0;
+  bestMult = 1; longestStreak = 0; curStreak = 0;
+  runElapsed = 0;
+  shakeAmt = 0; shakeFade = 0; bgHue = 220;
+  playerLane = Math.floor(NUM_LANES / 2);
+  laneOffsetX = 0; laneOffsetTarget = 0;
+  gustActive = false; gustTimer = 0; gustCooldown = 0;
+  rows = []; particles = []; afterimages = [];
+  hudEvent = null; playerFlash = 0;
+  lastDashDir = 1; dashProgress = 1;
+  playerX = laneX(playerLane);
+  playerTargetX = playerX;
 }
 
-// ─── Background pattern ───────────────────────────────────────────────────────
-let bgPat=null;
-function rebuildBgPattern(){
-  const sz=128;
-  const oc=Object.assign(document.createElement('canvas'),{width:sz,height:sz});
-  const ox=oc.getContext('2d');
-  for(let i=0;i<1200;i++){
-    ox.fillStyle=`rgba(210,160,80,${Math.random()*0.18+0.02})`;
-    ox.fillRect(Math.random()*sz,Math.random()*sz,1,1);
+// ── Spawn row ─────────────────────────────────────────────────────────────────
+function spawnRow() {
+  const speed = clamp(120 + runElapsed * 1.8, 120, 280) + rnd(-10, 10);
+  let numGaps = runElapsed < 5 ? 2 : (rnd(0,1) < (runElapsed < 20 ? 0.5 : 0.3) ? 1 : 2);
+  numGaps = clamp(numGaps, 1, NUM_LANES - 1);
+
+  const gaps = [];
+  while (gaps.length < numGaps) {
+    const l = rndI(0, NUM_LANES - 1);
+    if (!gaps.includes(l)) gaps.push(l);
   }
-  bgPat=ctx.createPattern(oc,'repeat');
-}
+  // Guarantee gap in player lane early on
+  if (runElapsed < 3 && !gaps.includes(playerLane)) gaps[0] = playerLane;
 
-// ─── Crest ────────────────────────────────────────────────────────────────────
-const SEG=90, SEG_H=10;
-let crestPts=[], crestDir=0, crestOff=0;
-// Difficulty vars
-let crestSpd=3, curvature=0.016;
-const MARGIN=60;
+  const wallSegs = [];
+  for (let l = 0; l < NUM_LANES; l++) {
+    if (!gaps.includes(l)) wallSegs.push({ laneIdx: l });
+  }
 
-function initCrest(){
-  crestPts=[];
-  for(let i=0;i<SEG;i++) crestPts.push(W/2);
-  crestDir=0; crestOff=0;
-}
+  const telegraphDur = clamp(55 - runElapsed * 0.4, 20, 55);
+  const gust = runElapsed > 60 && rnd(0,1) < 0.12;
 
-function stepCrest(){
-  crestDir+=(Math.random()-0.5)*curvature*W;
-  crestDir*=0.87;
-  let nx=crestPts[0]+crestDir;
-  nx=Math.max(MARGIN,Math.min(W-MARGIN,nx));
-  crestPts.unshift(nx);
-  crestPts.pop();
-}
-
-function crestAt(y){
-  // y=H → bottom; y=0 → top
-  // crestPts[0] = newest (top), crestPts[SEG-1] = oldest (bottom)
-  const rawIdx=(H-y)/SEG_H+crestOff;
-  const i=Math.floor(rawIdx), t=rawIdx-i;
-  if(i<0) return crestPts[0];
-  if(i>=SEG-1) return crestPts[SEG-1];
-  return crestPts[i]*(1-t)+crestPts[i+1]*t;
-}
-
-// ─── Player ───────────────────────────────────────────────────────────────────
-let px=0, py=0, pvx=0;
-const PY_FRAC=0.78;
-
-function initPlayer(){
-  py=H*PY_FRAC;
-  px=crestAt(py);
-  pvx=0;
-}
-
-// ─── Score / Combo ─────────────────────────────────────────────────────────────
-let score=0, combo=1, bestCombo=1;
-let offCrestSec=0, crestSec=0, totalSec=0;
-const OFF_RESET=1.8;
-
-// ─── Difficulty ───────────────────────────────────────────────────────────────
-let gameSpd=1, diffSec=0;
-let gateTimer=0, gateInterval=220;
-let rockTimer=0, rockInterval=110;
-
-// ─── Crosswind ────────────────────────────────────────────────────────────────
-let cwIntensity=0, cwDir=1, cwActive=0, cwWarn=0;
-
-// ─── Hit-stop ─────────────────────────────────────────────────────────────────
-let hitStop=0;
-
-// ─── Shake ────────────────────────────────────────────────────────────────────
-let shake=0;
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-let toastMsg='', toastLife=0;
-
-// ─── Gates ────────────────────────────────────────────────────────────────────
-let gates=[];
-function spawnGate(){
-  const cx=crestAt(0);
-  const gw=Math.max(52, 100-score/500);
-  gates.push({x:cx,y:-40,w:gw,passed:false,flash:0});
-}
-
-// ─── Rocks ────────────────────────────────────────────────────────────────────
-let rocks=[];
-function spawnRock(){
-  const cx=crestAt(0);
-  const side=Math.random()<0.5?-1:1;
-  const off=70+Math.random()*90;
-  rocks.push({
-    x:Math.max(18,Math.min(W-18,cx+side*off)),
-    y:-22, r:10+Math.random()*8,
-    nm:false, hit:false
+  rows.push({
+    y: -WALL_H - 10, speed, gaps, wallSegs,
+    telegraphAlpha: 0, solid: false,
+    telegraphTimer: 0, telegraphDur, gust,
+    grazedThisRow: false, comboChecked: false, passedPlayer: false,
   });
 }
 
-// ─── Particle pool ───────────────────────────────────────────────────────────
-const POOL=400;
-const pool=Array.from({length:POOL},()=>({on:false}));
+function lastRowY() { return rows.length ? rows[rows.length-1].y : Infinity; }
+function rowSpacing() { return clamp(260 - runElapsed * 1.2, 140, 260); }
 
-function emit(x,y,vx,vy,life,sz,hue,a,type){
-  for(let i=0;i<POOL;i++){
-    if(!pool[i].on){
-      const p=pool[i];
-      p.on=true; p.x=x; p.y=y; p.vx=vx; p.vy=vy;
-      p.life=life; p.ml=life; p.sz=sz;
-      p.hue=hue; p.a=a; p.type=type;
-      return;
-    }
+// ── Dash ──────────────────────────────────────────────────────────────────────
+function triggerDash() {
+  if (state !== 'playing') return;
+  // Afterimages
+  afterimages.push({ x: playerX, y: H * PLAYER_Y_FR, alpha: 0.6 });
+  afterimages.push({ x: lerp(playerX, playerTargetX, 0.5), y: H * PLAYER_Y_FR, alpha: 0.35 });
+
+  if (playerLane === 0)               lastDashDir = 1;
+  else if (playerLane === NUM_LANES-1) lastDashDir = -1;
+  let nl = playerLane + lastDashDir;
+  if (nl < 0 || nl >= NUM_LANES) { lastDashDir = -lastDashDir; nl = playerLane + lastDashDir; }
+  playerLane = clamp(nl, 0, NUM_LANES - 1);
+  playerTargetX = laneX(playerLane);
+  dashProgress = 0;
+
+  for (let i = 0; i < 10; i++) {
+    spawnParticle(playerX, H * PLAYER_Y_FR, {
+      hue: rnd(30,55), sat:75, lit:65,
+      vx: rnd(-80,80), vy: rnd(-50,30), life: rnd(0.25,0.55), r: rnd(2,5),
+    });
   }
 }
 
-function emitSand(x,y){
-  const n=hold?5:2;
-  for(let i=0;i<n;i++){
-    const a=Math.PI+(Math.random()-0.5)*1.3;
-    const s=1+Math.random()*2.5;
-    emit(x+(Math.random()-.5)*8, y+(Math.random()-.5)*4,
-         Math.cos(a)*s, Math.sin(a)*s-.4,
-         18+Math.random()*18, 2+Math.random()*2.5,
-         hue(), 0.75, 'sand');
-  }
+// ── Particles ─────────────────────────────────────────────────────────────────
+function spawnParticle(x, y, o) {
+  particles.push({
+    x, y,
+    vx: o.vx||0, vy: o.vy||0,
+    life: o.life||0.5, maxLife: o.life||0.5,
+    r: o.r||3, hue: o.hue||200, sat: o.sat||70, lit: o.lit||60, alpha: o.alpha||1,
+  });
 }
 
-function emitBurst(x,y){
-  for(let i=0;i<26;i++){
-    const a=Math.random()*Math.PI*2, s=1+Math.random()*4;
-    emit(x,y,Math.cos(a)*s,Math.sin(a)*s,
-         22+Math.random()*22,3+Math.random()*4,hue(),0.9,'burst');
-  }
+function emitGraze(x, y) {
+  for (let i=0; i<14; i++)
+    spawnParticle(x, y, { hue:rnd(160,220), sat:80, lit:65, vx:rnd(-90,90), vy:rnd(-70,20), life:rnd(0.3,0.7), r:rnd(2,6) });
+  for (let i=0; i<6; i++)
+    spawnParticle(x, y, { hue:rnd(40,60), sat:90, lit:70, vx:rnd(-50,50), vy:rnd(-80,-20), life:rnd(0.4,0.8), r:rnd(3,7) });
 }
 
-function emitDust(x,y){
-  for(let i=0;i<45;i++){
-    const a=Math.random()*Math.PI*2, s=.5+Math.random()*3;
-    emit(x+(Math.random()-.5)*22,y+(Math.random()-.5)*12,
-         Math.cos(a)*s,Math.sin(a)*s-1,
-         28+Math.random()*30,4+Math.random()*6,36,.85,'dust');
-  }
+function emitHit(x, y) {
+  for (let i=0; i<30; i++)
+    spawnParticle(x, y, { hue:rnd(0,30), sat:90, lit:60, vx:rnd(-120,120), vy:rnd(-120,80), life:rnd(0.4,1.0), r:rnd(3,9) });
+  for (let i=0; i<15; i++)
+    spawnParticle(x, y, { hue:rnd(200,270), sat:70, lit:55, vx:rnd(-80,80), vy:rnd(-60,60), life:rnd(0.5,1.2), r:rnd(2,6) });
 }
 
-function emitSpeed(x,y){
-  emit(x,y,0,3+Math.random()*3,10+Math.random()*8,1,hue(),.45,'spd');
+// ── Collision / graze ─────────────────────────────────────────────────────────
+function circleRectDist(cx,cy,r, rx,ry,rw,rh) {
+  const nx = clamp(cx, rx, rx+rw);
+  const ny = clamp(cy, ry, ry+rh);
+  return Math.hypot(cx-nx, cy-ny) - r;
 }
 
-// ─── Colour ───────────────────────────────────────────────────────────────────
-let startHue=30;
-function hue(){
-  if(state!==S.PLAY) return startHue;
-  return 30+Math.min(combo-1,10)/10*240;
+function checkRow(row, px, py) {
+  if (!row.solid) return null;
+  for (const seg of row.wallSegs) {
+    const rx = laneW() * seg.laneIdx + laneOffsetX;
+    const ry = row.y;
+    const rw = laneW();
+    const rh = WALL_H;
+
+    // y-band overlap
+    if (py + PLAYER_R < ry || py - PLAYER_R > ry + rh) continue;
+
+    const d = circleRectDist(px, py, PLAYER_R, rx, ry, rw, rh);
+    if (d < 0)            return 'hit';
+    if (d <= GRAZE_PX)    return 'graze';
+  }
+  return null;
 }
 
-// ─── Init game ────────────────────────────────────────────────────────────────
-function startGame(){
-  state=S.PLAY;
-  score=0; combo=1; bestCombo=1;
-  offCrestSec=0; crestSec=0; totalSec=0;
-  gameSpd=1; diffSec=0;
-  crestSpd=3; curvature=0.016;
-  gateTimer=80; gateInterval=220;
-  rockTimer=50; rockInterval=110;
-  cwIntensity=0; cwActive=0; cwWarn=0;
-  hitStop=0; shake=0;
-  gates=[]; rocks=[];
-  for(const p of pool) p.on=false;
-  btnA=null; btnB=null;
-  initCrest();
-  initPlayer();
-  lastTS=performance.now();
-}
+// ── Update ────────────────────────────────────────────────────────────────────
+function update(dt) {
+  if (state !== 'playing') return;
+  runElapsed += dt;
+  score += dt * 15 * multiplier;
 
-// ─── Loop ────────────────────────────────────────────────────────────────────
-let lastTS=performance.now();
+  // Background hue
+  const targetHue = combo >= 5 ? 260 : combo >= 3 ? 240 : 220;
+  bgHue = lerp(bgHue, targetHue, 0.015);
 
-function loop(ts){
-  requestAnimationFrame(loop);
-  const raw=ts-lastTS; lastTS=ts;
-  const dt=Math.min(raw/16.667,2.5);
-
-  startHue=(startHue+0.35)%360;
-
-  if(state===S.PLAY){
-    if(hitStop>0){ hitStop--; draw(); return; }
-    update(dt);
-  }
-  draw();
-}
-
-// ─── Update ───────────────────────────────────────────────────────────────────
-function update(dt){
-  const sec=dt/60;
-  totalSec+=sec;
-
-  // Difficulty
-  diffSec+=sec;
-  gameSpd   =1+diffSec*0.042;
-  curvature =0.016+diffSec*0.0009;
-  crestSpd  =3+diffSec*0.13;
-  gateInterval=Math.max(95,220-diffSec*3);
-  rockInterval=Math.max(52,110-diffSec*2);
-
-  // Crosswind scheduling
-  if(cwWarn>0){
-    cwWarn-=sec;
-    if(cwWarn<=0){
-      cwIntensity=.6+Math.random()*.4;
-      cwDir=Math.random()<.5?-1:1;
-      cwActive=3+Math.random()*3;
-    }
-  }
-  if(cwActive>0){
-    cwActive-=sec;
-    if(cwActive<=0) cwIntensity=0;
-  }
-  if(diffSec>10&&cwIntensity===0&&cwActive<=0&&cwWarn<=0){
-    if(Math.random()<0.016*dt) cwWarn=1.4+Math.random();
-  }
-
-  // Scroll crest
-  crestOff+=crestSpd*gameSpd*dt/SEG_H;
-  while(crestOff>=1){ crestOff--; stepCrest(); }
-
-  // Player steering
-  const cx=crestAt(py);
-  const dx=cx-px;
-  const onCrest=Math.abs(dx)<42;
-
-  const steer=hold?0.19:0.08;
-  pvx+=dx*steer*dt;
-  pvx*=hold?.82:.89;
-
-  // Crosswind drift
-  if(cwIntensity>0) pvx+=cwDir*cwIntensity*(hold?.55:2.1)*dt;
-
-  px+=pvx*dt;
-  px=Math.max(12,Math.min(W-12,px));
-
-  // Score
-  if(onCrest){
-    crestSec+=sec;
-    score+=(sec*55+.55*combo)*combo;
-    offCrestSec=0;
+  // Dune drift & gusts
+  gustCooldown = Math.max(0, gustCooldown - dt);
+  if (gustActive) {
+    gustTimer -= dt;
+    if (gustTimer <= 0) { gustActive = false; }
   } else {
-    score+=sec*16;
-    offCrestSec+=sec;
-    if(offCrestSec>OFF_RESET){ combo=Math.max(1,combo-1); offCrestSec=0; }
+    laneOffsetTarget = Math.sin(runElapsed * 0.18) * Math.min(runElapsed * 0.35, 22);
+    if (runElapsed > 60 && gustCooldown <= 0 && Math.random() < 0.003) {
+      gustActive = true; gustTimer = rnd(1.5,3.5);
+      laneOffsetTarget = rnd(-28, 28);
+      gustCooldown = rnd(8,15);
+    }
   }
+  laneOffsetX = lerp(laneOffsetX, laneOffsetTarget, 0.04);
 
-  // Sand spray
-  if(onCrest) emitSand(px,py);
-  if(!hold&&gameSpd>1.5&&Math.random()<.4) emitSpeed(px+(Math.random()-.5)*22,py-10-Math.random()*28);
+  // Player movement
+  playerTargetX = laneX(playerLane);
+  if (dashProgress < 1) dashProgress = Math.min(1, dashProgress + DASH_SPEED);
+  playerX = lerp(playerX, playerTargetX, easeO(dashProgress) * 0.25 + 0.05);
 
-  // Gates
-  gateTimer-=dt;
-  if(gateTimer<=0){ spawnGate(); gateTimer=gateInterval; }
-  for(let i=gates.length-1;i>=0;i--){
-    const g=gates[i];
-    g.y+=crestSpd*gameSpd*dt;
-    if(g.flash>0) g.flash-=dt;
-    if(!g.passed&&g.y+20>=py-10){
-      g.passed=true;
-      const left=g.x-g.w/2, right=g.x+g.w/2;
-      if(px>=left&&px<=right){
-        combo=Math.min(combo+1,14);
-        if(combo>bestCombo) bestCombo=combo;
-        const centDist=Math.abs(px-g.x);
-        if(centDist<g.w*.16){ hitStop=2; score+=140*combo; }
-        else score+=45*combo;
-        g.flash=7; shake=2.5;
-        emitBurst(g.x,g.y);
-      } else {
-        combo=1;
+  shakeAmt  = Math.max(0, shakeAmt - shakeFade * dt);
+  playerFlash = Math.max(0, playerFlash - dt * 2);
+
+  // Spawn
+  if (lastRowY() > rowSpacing()) spawnRow();
+
+  const py = H * PLAYER_Y_FR;
+  const px = playerX;
+
+  // Update rows
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    row.y += row.speed * dt;
+
+    // Telegraph → solid
+    if (!row.solid) {
+      row.telegraphTimer++;
+      row.telegraphAlpha = Math.min(1, row.telegraphTimer / (row.telegraphDur * 0.6));
+      if (row.telegraphTimer >= row.telegraphDur) row.solid = true;
+    }
+
+    // Check graze / collision
+    if (!row.passedPlayer) {
+      const result = checkRow(row, px, py);
+      if (result === 'hit') {
+        triggerGameOver('HIT');
+        return;
+      } else if (result === 'graze' && !row.grazedThisRow) {
+        row.grazedThisRow = true;
+        combo++; curStreak++;
+        if (curStreak > longestStreak) longestStreak = curStreak;
+        multiplier = Math.min(1 + Math.floor(combo / 2), 10);
+        if (multiplier > bestMult) bestMult = multiplier;
+        const bonus = 50 * multiplier;
+        score += bonus;
+        playerFlash = 1;
+        shakeAmt = 2; shakeFade = 12;
+        emitGraze(px, py);
+        showHud(`GRAZE +${bonus}`, '#40e8c0');
       }
     }
-    if(g.y>H+55) gates.splice(i,1);
-  }
 
-  // Rocks
-  rockTimer-=dt;
-  if(rockTimer<=0){ spawnRock(); rockTimer=rockInterval; }
-  for(let i=rocks.length-1;i>=0;i--){
-    const r=rocks[i];
-    r.y+=crestSpd*gameSpd*dt;
-    const ddx=px-r.x, ddy=py-r.y;
-    const dist=Math.sqrt(ddx*ddx+ddy*ddy);
-    if(dist<r.r+9&&!r.hit){ r.hit=true; crash(); return; }
-    if(!r.nm&&dist<r.r+38&&dist>r.r+9&&r.y>0){
-      r.nm=true; score+=28*combo; emitBurst(r.x,r.y);
+    // Passed player — check miss
+    if (!row.comboChecked && row.y > py + PLAYER_R + WALL_H + 5) {
+      row.comboChecked = true;
+      row.passedPlayer = true;
+      if (row.solid && !row.grazedThisRow && row.wallSegs.length > 0) {
+        combo = 0; curStreak = 0; multiplier = 1;
+        showHud('NO GRAZE', '#e07060');
+      }
     }
-    if(r.y>H+32) rocks.splice(i,1);
+
+    if (row.y > H + WALL_H + 20) { rows.splice(i, 1); }
   }
 
   // Particles
-  for(const p of pool){
-    if(!p.on) continue;
-    p.x+=p.vx; p.y+=p.vy; p.vy+=.06;
-    p.life-=dt;
-    if(p.life<=0) p.on=false;
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 80 * dt;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
   }
 
-  // Shake
-  if(shake>0.3) shake*=.84;
+  // Afterimages
+  for (let i = afterimages.length - 1; i >= 0; i--) {
+    afterimages[i].alpha -= dt * 3;
+    if (afterimages[i].alpha <= 0) afterimages.splice(i, 1);
+  }
 
-  // Toast
-  if(toastLife>0) toastLife-=dt;
+  // HUD event
+  if (hudEvent) { hudEvent.timer -= dt; if (hudEvent.timer <= 0) hudEvent = null; }
 }
 
-// ─── Crash ────────────────────────────────────────────────────────────────────
-function crash(){
-  state=S.OVER; shake=12;
-  emitDust(px,py);
-  const sc=Math.floor(score);
-  if(sc>bestScore){ bestScore=sc; localStorage.setItem('dd_best',sc); }
-  if(bestCombo>bestComboEver){ bestComboEver=bestCombo; localStorage.setItem('dd_bestcombo',bestCombo); }
+function showHud(text, color) {
+  hudEvent = { text, color, timer: 1.4 };
 }
 
-// ─── Draw ─────────────────────────────────────────────────────────────────────
-function draw(){
-  const h=hue();
-  let sx=0,sy=0;
-  if(shake>0.3){ sx=(Math.random()-.5)*shake*2; sy=(Math.random()-.5)*shake*2; }
+// ── Game over ─────────────────────────────────────────────────────────────────
+function triggerGameOver(reason) {
+  state = 'gameover';
+  shakeAmt = 12; shakeFade = 8;
+  emitHit(playerX, H * PLAYER_Y_FR);
+  const fs = Math.floor(score);
+  if (fs > sessionBest) { sessionBest = fs; localStorage.setItem('duneDrift_best', fs); }
+  goScoreEl.textContent  = fs.toLocaleString();
+  goBestEl.textContent   = `Best: ${sessionBest.toLocaleString()}`;
+  goMultEl.textContent   = `x${bestMult}`;
+  goStreakEl.textContent = longestStreak;
+  goReasonEl.textContent = reason;
+  overlayGameover.classList.remove('hidden');
+}
 
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function draw() {
+  const sx = shakeAmt > 0 ? rnd(-shakeAmt, shakeAmt) : 0;
+  const sy = shakeAmt > 0 ? rnd(-shakeAmt, shakeAmt) : 0;
   ctx.save();
-  ctx.translate(sx,sy);
+  ctx.translate(sx, sy);
 
-  drawBg(h);
-  if(state===S.START){ drawStart(h); }
-  else {
-    drawCrosswindFX(h);
-    drawCrest(h);
-    drawGates(h);
-    drawRocks();
-    drawParticles();
-    if(state===S.PLAY){ drawPlayer(h); drawHUD(h); }
-    else { drawPlayer(h); drawOver(h); }
-  }
-  if(toastLife>0) drawToast();
+  // Background
+  const bgSat = 20 + (combo > 3 ? Math.min(combo * 3, 25) : 0);
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, `hsl(${bgHue},${bgSat}%,7%)`);
+  bg.addColorStop(0.6, `hsl(${bgHue-15},${bgSat-5}%,9%)`);
+  bg.addColorStop(1, `hsl(30,30%,12%)`);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
 
-  ctx.restore();
-}
+  drawDunes();
+  drawLaneDividers();
 
-function drawBg(h){
-  const sg=ctx.createLinearGradient(0,0,0,H*.46);
-  sg.addColorStop(0,'#0d0500');
-  sg.addColorStop(1,`hsl(${h*.3+10},28%,9%)`);
-  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H*.46);
+  for (const row of rows) drawRow(row);
 
-  const dg=ctx.createLinearGradient(0,H*.46,0,H);
-  dg.addColorStop(0,`hsl(${h*.5+22},38%,13%)`);
-  dg.addColorStop(1,`hsl(${h*.4+18},46%,7%)`);
-  ctx.fillStyle=dg; ctx.fillRect(0,H*.46,W,H*.54);
-
-  if(bgPat){
-    ctx.globalAlpha=.07;
-    ctx.fillStyle=bgPat;
-    ctx.fillRect(0,0,W,H);
-    ctx.globalAlpha=1;
-  }
-
-  ctx.strokeStyle=`hsla(${h*.3+14},45%,28%,.4)`;
-  ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(0,H*.46); ctx.lineTo(W,H*.46); ctx.stroke();
-}
-
-function drawCrosswindFX(h){
-  const now=performance.now();
-  if(cwWarn>0){
-    const pulse=Math.sin(now/110)*.3+.35;
-    ctx.strokeStyle=`rgba(255,200,50,${pulse})`;
-    ctx.lineWidth=1.2;
-    for(let i=0;i<9;i++){
-      const ox=((now*cwDir*.06)%W+i*(W/8));
-      ctx.beginPath();
-      ctx.moveTo(ox%W, H*.18+i*14);
-      ctx.lineTo((ox+cwDir*35)%W, H*.18+i*14+6);
-      ctx.stroke();
-    }
-  }
-  if(cwIntensity>0){
-    ctx.strokeStyle=`rgba(255,195,75,.13)`;
-    ctx.lineWidth=1;
-    for(let i=0;i<6;i++){
-      const ox=((now*cwDir*.09)%W+i*(W/5));
-      ctx.beginPath();
-      ctx.moveTo(ox%W, H*.28+i*20);
-      ctx.lineTo((ox+cwDir*55)%W, H*.28+i*20+9);
-      ctx.stroke();
-    }
-  }
-}
-
-function drawCrest(h){
-  const step=5;
-  ctx.save();
-  // Wide glow
-  ctx.strokeStyle=`hsla(${h},75%,65%,.18)`;
-  ctx.lineWidth=14;
-  ctx.beginPath();
-  for(let y=H;y>=0;y-=step){
-    const x=crestAt(y);
-    y===H?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-  // Core line
-  ctx.shadowColor=`hsl(${h},100%,70%)`;
-  ctx.shadowBlur=14;
-  ctx.strokeStyle=`hsl(${h},82%,62%)`;
-  ctx.lineWidth=2.5;
-  ctx.beginPath();
-  for(let y=H;y>=0;y-=step){
-    const x=crestAt(y);
-    y===H?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawGates(h){
-  for(const g of gates){
-    const fl=g.flash>0?Math.min(1,g.flash/5):0;
-    const hw=g.w/2;
-    const pc=`hsl(${h+30},68%,${48+fl*42}%)`;
-
-    ctx.save();
-    ctx.shadowColor=`hsl(${h+30},80%,68%)`;
-    ctx.shadowBlur=8;
-    ctx.fillStyle=pc;
-    ctx.fillRect(g.x-hw-5, g.y-32, 6, 42);
-    ctx.fillRect(g.x+hw-1, g.y-32, 6, 42);
-    ctx.restore();
-
-    const bg=ctx.createLinearGradient(g.x-hw,0,g.x+hw,0);
-    bg.addColorStop(0,`hsla(${h},80%,58%,.82)`);
-    bg.addColorStop(1,`hsla(${h+55},80%,58%,.82)`);
-    ctx.fillStyle=bg;
-    ctx.fillRect(g.x-hw, g.y-34, g.w, 5);
-
-    const gg=ctx.createLinearGradient(g.x-hw,0,g.x+hw,0);
-    gg.addColorStop(0,`hsla(${h},100%,80%,0)`);
-    gg.addColorStop(.5,`hsla(${h},100%,80%,${.12+fl*.32})`);
-    gg.addColorStop(1,`hsla(${h},100%,80%,0)`);
-    ctx.fillStyle=gg;
-    ctx.fillRect(g.x-hw, g.y-30, g.w, 38);
-  }
-}
-
-function drawRocks(){
-  for(const r of rocks){
-    const rg=ctx.createRadialGradient(r.x-r.r*.3,r.y-r.r*.3,0,r.x,r.y,r.r);
-    rg.addColorStop(0,'rgba(115,82,52,.96)');
-    rg.addColorStop(1,'rgba(38,22,8,.97)');
-    ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
-    ctx.fillStyle=rg; ctx.fill();
-    ctx.strokeStyle='rgba(175,118,58,.4)'; ctx.lineWidth=1; ctx.stroke();
+  // Particles
+  for (const p of particles) {
+    const t = p.life / p.maxLife;
+    ctx.globalAlpha = t * p.alpha;
+    ctx.fillStyle = `hsl(${p.hue},${p.sat}%,${p.lit}%)`;
     ctx.beginPath();
-    ctx.ellipse(r.x+3,r.y+r.r*.8,r.r*.8,r.r*.22,0,0,Math.PI*2);
-    ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fill();
+    ctx.arc(p.x, p.y, p.r * (0.5 + t*0.5), 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Afterimages
+  const py = H * PLAYER_Y_FR;
+  for (const ai of afterimages) {
+    ctx.globalAlpha = ai.alpha * 0.55;
+    ctx.fillStyle = `hsl(${bgHue},60%,60%)`;
+    ctx.beginPath();
+    ctx.arc(ai.x, ai.y, PLAYER_R * 0.7, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  drawPlayer(playerX, py);
+  if (state === 'playing') drawHUD();
+
+  ctx.restore();
+}
+
+function drawDunes() {
+  const t = runElapsed;
+  const layers = [
+    { y:H*0.55, amp:18, freq:0.012, phase:t*0.08, a:0.07, hue:35 },
+    { y:H*0.65, amp:22, freq:0.009, phase:t*0.05, a:0.09, hue:40 },
+    { y:H*0.80, amp:14, freq:0.016, phase:t*0.11, a:0.06, hue:45 },
+  ];
+  for (const l of layers) {
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 4) {
+      const y = l.y + Math.sin(x*l.freq + l.phase)*l.amp + Math.cos(x*l.freq*1.7 + l.phase*0.8)*l.amp*0.4;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = `hsla(${l.hue},40%,45%,${l.a})`;
+    ctx.fill();
   }
 }
 
-function drawPlayer(h){
+function drawLaneDividers() {
+  const lw = laneW();
   ctx.save();
-  ctx.translate(px,py);
-  const tilt=pvx*.6;
-
-  // Board
-  ctx.save();
-  ctx.rotate(tilt*.042);
-  const blen=hold?30:25;
-  const bg=ctx.createLinearGradient(-blen*.5,-4,blen*.5,4);
-  bg.addColorStop(0,`hsl(${h},72%,58%)`);
-  bg.addColorStop(1,`hsl(${h+30},58%,33%)`);
-  ctx.shadowColor=`hsl(${h},100%,72%)`;
-  ctx.shadowBlur=hold?16:6;
-  ctx.fillStyle=bg;
-  ctx.beginPath();
-  ctx.ellipse(0,2,blen*.5,5,0,0,Math.PI*2);
-  ctx.fill();
-  ctx.restore();
-
-  // Rider head
-  ctx.shadowColor=`hsl(${h},100%,82%)`;
-  ctx.shadowBlur=8;
-  ctx.fillStyle=`hsl(${h+18},62%,72%)`;
-  ctx.beginPath(); ctx.arc(0,-11,7,0,Math.PI*2); ctx.fill();
-
-  // Body
-  ctx.fillStyle=`hsl(${h+8},58%,54%)`;
-  ctx.beginPath();
-  ctx.moveTo(0,-5); ctx.lineTo(-5,4); ctx.lineTo(5,4);
-  ctx.closePath(); ctx.fill();
-
-  // Carve arc
-  if(hold){
-    ctx.strokeStyle=`hsla(${h},100%,82%,.5)`;
-    ctx.lineWidth=2;
+  ctx.strokeStyle = 'rgba(100,130,160,0.07)';
+  ctx.setLineDash([6,14]);
+  ctx.lineWidth = 1;
+  for (let l = 1; l < NUM_LANES; l++) {
     ctx.beginPath();
-    ctx.arc(0,0,20,Math.PI*.55,Math.PI*1.45);
+    ctx.moveTo(lw*l + laneOffsetX, 0);
+    ctx.lineTo(lw*l + laneOffsetX, H);
     ctx.stroke();
   }
-
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
-function drawParticles(){
-  for(const p of pool){
-    if(!p.on) continue;
-    const t=p.life/p.ml;
-    let a=p.a;
-    if(p.type==='spd') a*=t;
-    else a*=Math.min(t*3,1)*t;
-    ctx.globalAlpha=Math.max(0,a);
-    if(p.type==='spd'){
-      ctx.strokeStyle=`hsl(${p.hue},78%,68%)`;
-      ctx.lineWidth=p.sz;
+function drawRow(row) {
+  const lw = laneW();
+  const py = H * PLAYER_Y_FR;
+
+  for (const seg of row.wallSegs) {
+    const x = lw * seg.laneIdx + laneOffsetX;
+    const y = row.y;
+    const w = lw;
+    const h = WALL_H;
+
+    if (!row.solid) {
+      const a = row.telegraphAlpha;
+      // Ground shadow at player impact zone
+      if (y < py && y + h > py - PLAYER_R * 3) {
+        ctx.save();
+        ctx.globalAlpha = a * 0.25;
+        ctx.fillStyle = 'hsl(60,90%,70%)';
+        ctx.fillRect(x, py - PLAYER_R - h*0.5, w, 5);
+        ctx.restore();
+      }
+      // Telegraph outline
+      ctx.save();
+      ctx.globalAlpha = a * 0.7;
+      ctx.strokeStyle = 'hsl(200,80%,75%)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'hsl(200,90%,80%)';
+      ctx.shadowBlur = 8;
+      ctx.strokeRect(x+1, y+1, w-2, h-2);
+      ctx.globalAlpha = a * 0.18;
+      ctx.fillStyle = 'hsl(200,70%,65%)';
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
+    } else {
+      // Solid wall
+      const g = ctx.createLinearGradient(x, y, x+w, y+h);
+      g.addColorStop(0, 'hsl(190,65%,38%)');
+      g.addColorStop(0.5, 'hsl(265,55%,35%)');
+      g.addColorStop(1, 'hsl(210,60%,30%)');
+      ctx.save();
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'hsl(190,80%,65%)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'hsl(190,90%,70%)';
+      ctx.shadowBlur = 6;
+      ctx.strokeRect(x+0.75, y+0.75, w-1.5, h-1.5);
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x+2, y+2, w-4, 4);
+      ctx.restore();
+    }
+  }
+
+  // Open lane chevrons
+  if (row.solid) {
+    for (const gl of row.gaps) {
+      const cx = lw * gl + lw*0.5 + laneOffsetX;
+      const cy = row.y + WALL_H*0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.38;
+      ctx.strokeStyle = 'hsl(160,70%,60%)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(p.x,p.y); ctx.lineTo(p.x,p.y-14*t);
+      ctx.moveTo(cx-6, cy-4); ctx.lineTo(cx, cy+4); ctx.lineTo(cx+6, cy-4);
       ctx.stroke();
-    } else {
-      ctx.fillStyle=`hsl(${p.hue+(1-t)*22},68%,${48+t*22}%)`;
-      ctx.beginPath(); ctx.arc(p.x,p.y,Math.max(.2,p.sz*t),0,Math.PI*2); ctx.fill();
+      ctx.restore();
     }
   }
-  ctx.globalAlpha=1;
 }
 
-function drawHUD(h){
-  const sc=Math.floor(score);
-  ctx.textAlign='center';
-  ctx.shadowColor=`hsl(${h},78%,48%)`; ctx.shadowBlur=8;
-  ctx.fillStyle='rgba(255,255,255,.92)';
-  ctx.font='bold 30px system-ui';
-  ctx.fillText(sc.toLocaleString(), W/2, 46);
-  ctx.shadowBlur=0;
-  ctx.fillStyle='rgba(255,255,255,.38)';
-  ctx.font='13px system-ui';
-  ctx.fillText('Best '+bestScore.toLocaleString(), W/2, 66);
-  if(combo>1){
-    ctx.font=`bold ${16+combo*.8}px system-ui`;
-    ctx.fillStyle=`hsl(${h},88%,66%)`;
-    ctx.shadowColor=`hsl(${h},100%,70%)`; ctx.shadowBlur=12;
-    ctx.fillText('×'+combo, W-42, 44);
-    ctx.shadowBlur=0;
-  }
-}
-
-function drawOver(h){
-  ctx.fillStyle='rgba(0,0,0,.62)';
-  ctx.fillRect(0,0,W,H);
-
-  const cx=W/2;
-  ctx.textAlign='center';
-
-  ctx.font='bold 38px system-ui';
-  ctx.fillStyle=`hsl(${h},78%,64%)`;
-  ctx.shadowColor=`hsl(${h},100%,58%)`; ctx.shadowBlur=18;
-  ctx.fillText('WIPED OUT',cx,H*.26);
-  ctx.shadowBlur=0;
-
-  ctx.font='bold 54px system-ui';
-  ctx.fillStyle='rgba(255,255,255,.95)';
-  ctx.fillText(Math.floor(score).toLocaleString(),cx,H*.38);
-
-  ctx.font='15px system-ui';
-  ctx.fillStyle='rgba(255,255,255,.42)';
-  ctx.fillText('Best: '+bestScore.toLocaleString(),cx,H*.445);
-
-  const cpct=totalSec>0?Math.round(crestSec/totalSec*100):0;
-  ctx.font='14px system-ui';
-  ctx.fillStyle='rgba(255,255,255,.58)';
-  ctx.fillText(`Crest time ${cpct}%  ·  Best combo ×${bestCombo}`,cx,H*.51);
-
-  ctx.font='15px system-ui';
-  ctx.fillStyle=`hsl(${h},68%,78%)`;
-  ctx.fillText('Tap to Retry',cx,H*.58);
-
-  // Buttons
-  const bw=146,bh=44,gap=12;
-  const by=H*.64;
-  const bx1=cx-bw-gap/2, bx2=cx+gap/2;
-  drawBtn(bx1,by,bw,bh,'Share Score',h);
-  drawBtn(bx2,by,bw,bh,'Challenge Friend',h+58);
-  btnA={x:bx1,y:by,w:bw,h:bh};
-  btnB={x:bx2,y:by,w:bw,h:bh};
-}
-
-function drawBtn(x,y,w,h,label,hue){
+function drawPlayer(px, py) {
   ctx.save();
-  rrect(x,y,w,h,10);
-  ctx.fillStyle=`hsla(${hue},58%,28%,.88)`; ctx.fill();
-  ctx.strokeStyle=`hsl(${hue},68%,54%)`; ctx.lineWidth=1.5; ctx.stroke();
-  ctx.fillStyle=`hsl(${hue},78%,80%)`;
-  ctx.font='13px system-ui'; ctx.textAlign='center';
-  ctx.fillText(label,x+w/2,y+h/2+5);
+  if (playerFlash > 0) {
+    const fr = PLAYER_R + (1-playerFlash)*16;
+    ctx.globalAlpha = playerFlash * 0.7;
+    ctx.strokeStyle = 'hsl(160,90%,65%)';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'hsl(160,90%,70%)';
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(px, py, fr, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+  ctx.shadowColor = 'hsl(45,90%,65%)';
+  ctx.shadowBlur = 18;
+  const g = ctx.createRadialGradient(px-PLAYER_R*0.3, py-PLAYER_R*0.3, PLAYER_R*0.1, px, py, PLAYER_R);
+  g.addColorStop(0, 'hsl(55,95%,80%)');
+  g.addColorStop(0.6, 'hsl(40,90%,60%)');
+  g.addColorStop(1, 'hsl(25,80%,40%)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(px, py, PLAYER_R, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'hsl(45,100%,80%)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
   ctx.restore();
 }
 
-function rrect(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
-}
+function drawHUD() {
+  const pad = 12;
+  ctx.save();
+  ctx.textBaseline = 'top';
 
-function drawStart(h){
-  ctx.textAlign='center';
-  const cx=W/2;
+  // Score panel
+  ctx.fillStyle = 'rgba(11,15,26,0.55)';
+  ctx.beginPath(); ctx.roundRect(pad, pad, 145, 56, 8); ctx.fill();
+  ctx.fillStyle = '#8099a8'; ctx.font = '11px system-ui';
+  ctx.fillText('SCORE', pad+10, pad+8);
+  ctx.fillStyle = '#f4d080'; ctx.font = 'bold 22px system-ui';
+  ctx.fillText(Math.floor(score).toLocaleString(), pad+10, pad+22);
+  ctx.fillStyle = '#506070'; ctx.font = '10px system-ui';
+  ctx.fillText(`Best: ${sessionBest.toLocaleString()}`, pad+10, pad+46);
 
-  ctx.font='bold 56px system-ui';
-  ctx.fillStyle=`hsl(${h},84%,64%)`;
-  ctx.shadowColor=`hsl(${h},100%,60%)`; ctx.shadowBlur=22;
-  ctx.fillText('DUNE DRIFT',cx,H*.37);
-  ctx.shadowBlur=0;
-
-  ctx.font='14px system-ui';
-  ctx.fillStyle='rgba(255,255,255,.52)';
-  ctx.fillText('Ride the crest. Thread the gates.',cx,H*.445);
-
-  const pulse=Math.sin(performance.now()/480)*.28+.72;
-  ctx.globalAlpha=pulse;
-  ctx.font='18px system-ui';
-  ctx.fillStyle=`hsl(${h},78%,76%)`;
-  ctx.fillText('Tap to Start',cx,H*.58);
-  ctx.globalAlpha=1;
-
-  ctx.font='12px system-ui';
-  ctx.fillStyle='rgba(255,255,255,.28)';
-  ctx.fillText('Hold = Carve tight  ·  Release = Glide fast',cx,H*.665);
-  ctx.fillText('Wind Gates → combo  ·  Rocks = game over',cx,H*.70);
-  if(bestScore>0){
-    ctx.fillStyle='rgba(255,255,255,.38)';
-    ctx.fillText('Best: '+bestScore.toLocaleString(),cx,H*.76);
+  // Multiplier panel
+  ctx.fillStyle = 'rgba(11,15,26,0.55)';
+  ctx.beginPath(); ctx.roundRect(W-125-pad, pad, 125, 56, 8); ctx.fill();
+  const mh = multiplier > 5 ? multiplier * 15 : 160;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#8099a8'; ctx.font = '11px system-ui';
+  ctx.fillText('MULTIPLIER', W-pad-10, pad+8);
+  ctx.fillStyle = `hsl(${mh},85%,65%)`; ctx.font = 'bold 22px system-ui';
+  ctx.fillText(`x${multiplier}`, W-pad-10, pad+22);
+  if (combo > 0) {
+    ctx.fillStyle = `hsl(${mh},70%,60%)`; ctx.font = 'bold 12px system-ui';
+    ctx.fillText(`${combo} streak`, W-pad-10, pad+46);
   }
+
+  // HUD event pop
+  if (hudEvent && hudEvent.timer > 0) {
+    const t = hudEvent.timer / 1.4;
+    const ey = H * PLAYER_Y_FR - PLAYER_R - 32 - (1-t)*18;
+    ctx.globalAlpha = Math.min(t*2, 1);
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${14 + (1-t)*4}px system-ui`;
+    ctx.fillStyle = hudEvent.color;
+    ctx.shadowColor = hudEvent.color;
+    ctx.shadowBlur = 8;
+    ctx.fillText(hudEvent.text, W*0.5, ey);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
 }
 
-function drawToast(){
-  const a=Math.min(toastLife/20,1);
-  ctx.globalAlpha=a;
-  ctx.textAlign='center';
-  ctx.font='bold 15px system-ui';
-  ctx.fillStyle='rgba(255,255,255,.9)';
-  ctx.fillText(toastMsg, W/2, H*.88);
-  ctx.globalAlpha=1;
+// ── Main loop ─────────────────────────────────────────────────────────────────
+function loop(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
 }
 
-// ─── Share ────────────────────────────────────────────────────────────────────
-function doShare(challenge){
-  const base='https://balinti.github.io/dune-drift/';
-  const url=`${base}?s=${Math.floor(score)}&c=${bestCombo}${challenge?'&mode=challenge':''}`;
-  const txt=challenge
-    ?`Can you beat my Dune Drift score of ${Math.floor(score).toLocaleString()}? ×${bestCombo} combo!`
-    :`I scored ${Math.floor(score).toLocaleString()} in Dune Drift with a ×${bestCombo} combo!`;
-  if(navigator.share){
-    navigator.share({title:'Dune Drift',text:txt,url}).catch(()=>{});
+// ── Input ─────────────────────────────────────────────────────────────────────
+function handleInput(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (state === 'start')    { startGame(); }
+  else if (state === 'playing') { triggerDash(); }
+  else if (state === 'gameover') { retryGame(); }
+}
+
+function startGame() {
+  overlayStart.classList.add('hidden');
+  overlayGameover.classList.add('hidden');
+  state = 'playing';
+  initGame();
+}
+function retryGame() {
+  overlayGameover.classList.add('hidden');
+  state = 'playing';
+  initGame();
+}
+
+canvas.addEventListener('pointerdown', handleInput);
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); handleInput(null); }
+});
+
+// Share button doesn't bubble to canvas
+shareBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  const fs = Math.floor(score);
+  const url  = `https://balinti.github.io/dune-drift/?ref=share&score=${fs}&mult=${bestMult}&streak=${longestStreak}`;
+  const text = `Can you beat my Dune Drift score? ${fs.toLocaleString()} pts · x${bestMult} mult · ${longestStreak} graze streak`;
+  if (navigator.share) {
+    navigator.share({ title:'Dune Drift', text, url }).catch(()=>{});
   } else {
-    const full=`${txt}\n${url}`;
-    if(navigator.clipboard){
-      navigator.clipboard.writeText(full).then(()=>toast('Link copied!')).catch(()=>toast('Copy: '+url));
-    } else {
-      const ta=document.createElement('textarea');
-      ta.value=full; ta.style.cssText='position:absolute;opacity:0';
-      document.body.appendChild(ta); ta.select();
-      try{ document.execCommand('copy'); toast('Link copied!'); } catch(e){ toast('Copy failed'); }
-      document.body.removeChild(ta);
+    navigator.clipboard.writeText(`${text}\n${url}`).then(() => {
+      shareBtn.textContent = 'Copied!';
+      setTimeout(() => { shareBtn.textContent = 'Challenge a Friend'; }, 2000);
+    }).catch(() => { shareBtn.textContent = url; });
+  }
+});
+
+// Friend challenge banner
+(function() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('ref') === 'share') {
+    const parts = [];
+    if (p.get('score'))  parts.push(`${parseInt(p.get('score')).toLocaleString()} pts`);
+    if (p.get('mult'))   parts.push(`x${p.get('mult')} mult`);
+    if (p.get('streak')) parts.push(`${p.get('streak')} streak`);
+    if (parts.length) {
+      challengeBanner.textContent = `Friend challenge: Beat ${parts.join(' / ')}!`;
+      challengeBanner.style.display = 'block';
     }
   }
-}
+})();
 
-function toast(msg){ toastMsg=msg; toastLife=130; }
-
-// ─── Boot ─────────────────────────────────────────────────────────────────────
-resize();
-lastTS=performance.now();
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initGame();
 requestAnimationFrame(loop);
 
 })();
