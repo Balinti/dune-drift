@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dune Drift - Free HTML5 Game</title>
+  <meta name="description" content="Play Dune Drift - Swipe to guide a sand surfer through shifting dunes as the palette evolves from warm to cool tones.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a0a00">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Dune Drift - Free HTML5 Game">
+  <meta property="og:description" content="Guide a sand surfer through shifting dunes. Tap to carve, release to glide. How far can you ride?">
+  <meta property="og:url" content="https://balinti.github.io/dune-drift/">
+  <meta property="og:image" content="https://balinti.github.io/dune-drift/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Dune Drift">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Dune Drift - Free HTML5 Game">
+  <meta name="twitter:description" content="Guide a sand surfer through shifting dunes. Tap to carve, release to glide. How far can you ride?">
+  <meta name="twitter:image" content="https://balinti.github.io/dune-drift/og-image.png">
+
+  <link rel="canonical" href="https://balinti.github.io/dune-drift/">
+
+  <!-- AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
+
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{
+      width:100%;height:100%;
+      background:#0d0500;
+      display:flex;align-items:center;justify-content:center;
+      overflow:hidden;font-family:system-ui,sans-serif;
+      touch-action:none;user-select:none;
+    }
+    #wrap{
+      position:relative;
+      width:100%;max-width:420px;
+      height:100vh;max-height:750px;
+      overflow:hidden;
+    }
+    canvas{display:block;width:100%;height:100%;cursor:pointer;}
+    #seo{
+      position:absolute;width:1px;height:1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
+    }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="seo" aria-hidden="true">
+    <h1>Dune Drift — Free Browser HTML5 Game</h1>
+    <p>Dune Drift is a free hyper-casual HTML5 canvas game. You control a sand surfer riding the glowing crest of ever-shifting desert dunes. Tap and hold to carve tight arcs; release to glide at speed. Thread through Wind Gates to stack your combo multiplier. Dodge rocks lurking off the crest for near-miss bonuses. The colour palette shifts from warm amber to cool indigo as your combo grows. Features: combo multiplier, Wind Gates, near-miss bonuses, crosswind events telegraphed by sand streaks, hit-stop on perfect gate centres, particle sand spray, screen shake, high-DPI canvas, and local best-score persistence.</p>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+
+// ─── Canvas ──────────────────────────────────────────────────────────────────
+const wrap   = document.getElementById('wrap');
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W=0, H=0, DPR=1;
+
+function resize(){
+  DPR = devicePixelRatio||1;
+  W   = wrap.clientWidth;
+  H   = wrap.clientHeight;
+  canvas.width  = W*DPR;
+  canvas.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  rebuildBgPattern();
+}
+addEventListener('resize', resize);
+
+// ─── LocalStorage ─────────────────────────────────────────────────────────────
+let bestScore = +localStorage.getItem('dd_best')||0;
+let bestComboEver = +localStorage.getItem('dd_bestcombo')||0;
+
+// ─── States ───────────────────────────────────────────────────────────────────
+const S={START:0,PLAY:1,OVER:2};
+let state=S.START;
+
+// ─── Input ────────────────────────────────────────────────────────────────────
+let hold=false;
+canvas.addEventListener('pointerdown', e=>{ e.preventDefault(); onPress(); },  {passive:false});
+canvas.addEventListener('pointerup',   ()=>{ hold=false; });
+canvas.addEventListener('pointercancel',()=>{ hold=false; });
+addEventListener('keydown', e=>{
+  if(e.code==='Space'||e.code==='Enter'){ e.preventDefault(); onPress(); }
+});
+addEventListener('keyup', e=>{
+  if(e.code==='Space'||e.code==='Enter') hold=false;
+});
+
+// Game-over button hit areas
+let btnA=null, btnB=null;
+canvas.addEventListener('pointerdown', e=>{
+  if(state!==S.OVER) return;
+  const r=canvas.getBoundingClientRect();
+  const cx=(e.clientX-r.left)*(W/r.width);
+  const cy=(e.clientY-r.top)*(H/r.height);
+  if(btnA && hit(cx,cy,btnA)){ doShare(false); return; }
+  if(btnB && hit(cx,cy,btnB)){ doShare(true);  return; }
+}, true);
+
+function hit(x,y,b){ return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h; }
+
+function onPress(){
+  if(state===S.PLAY){ hold=true; return; }
+  startGame();
+}
+
+// ─── Background pattern ───────────────────────────────────────────────────────
+let bgPat=null;
+function rebuildBgPattern(){
+  const sz=128;
+  const oc=Object.assign(document.createElement('canvas'),{width:sz,height:sz});
+  const ox=oc.getContext('2d');
+  for(let i=0;i<1200;i++){
+    ox.fillStyle=`rgba(210,160,80,${Math.random()*0.18+0.02})`;
+    ox.fillRect(Math.random()*sz,Math.random()*sz,1,1);
+  }
+  bgPat=ctx.createPattern(oc,'repeat');
+}
+
+// ─── Crest ────────────────────────────────────────────────────────────────────
+const SEG=90, SEG_H=10;
+let crestPts=[], crestDir=0, crestOff=0;
+// Difficulty vars
+let crestSpd=3, curvature=0.016;
+const MARGIN=60;
+
+function initCrest(){
+  crestPts=[];
+  for(let i=0;i<SEG;i++) crestPts.push(W/2);
+  crestDir=0; crestOff=0;
+}
+
+function stepCrest(){
+  crestDir+=(Math.random()-0.5)*curvature*W;
+  crestDir*=0.87;
+  let nx=crestPts[0]+crestDir;
+  nx=Math.max(MARGIN,Math.min(W-MARGIN,nx));
+  crestPts.unshift(nx);
+  crestPts.pop();
+}
+
+function crestAt(y){
+  // y=H → bottom; y=0 → top
+  // crestPts[0] = newest (top), crestPts[SEG-1] = oldest (bottom)
+  const rawIdx=(H-y)/SEG_H+crestOff;
+  const i=Math.floor(rawIdx), t=rawIdx-i;
+  if(i<0) return crestPts[0];
+  if(i>=SEG-1) return crestPts[SEG-1];
+  return crestPts[i]*(1-t)+crestPts[i+1]*t;
+}
+
+// ─── Player ───────────────────────────────────────────────────────────────────
+let px=0, py=0, pvx=0;
+const PY_FRAC=0.78;
+
+function initPlayer(){
+  py=H*PY_FRAC;
+  px=crestAt(py);
+  pvx=0;
+}
+
+// ─── Score / Combo ─────────────────────────────────────────────────────────────
+let score=0, combo=1, bestCombo=1;
+let offCrestSec=0, crestSec=0, totalSec=0;
+const OFF_RESET=1.8;
+
+// ─── Difficulty ───────────────────────────────────────────────────────────────
+let gameSpd=1, diffSec=0;
+let gateTimer=0, gateInterval=220;
+let rockTimer=0, rockInterval=110;
+
+// ─── Crosswind ────────────────────────────────────────────────────────────────
+let cwIntensity=0, cwDir=1, cwActive=0, cwWarn=0;
+
+// ─── Hit-stop ─────────────────────────────────────────────────────────────────
+let hitStop=0;
+
+// ─── Shake ────────────────────────────────────────────────────────────────────
+let shake=0;
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let toastMsg='', toastLife=0;
+
+// ─── Gates ────────────────────────────────────────────────────────────────────
+let gates=[];
+function spawnGate(){
+  const cx=crestAt(0);
+  const gw=Math.max(52, 100-score/500);
+  gates.push({x:cx,y:-40,w:gw,passed:false,flash:0});
+}
+
+// ─── Rocks ────────────────────────────────────────────────────────────────────
+let rocks=[];
+function spawnRock(){
+  const cx=crestAt(0);
+  const side=Math.random()<0.5?-1:1;
+  const off=70+Math.random()*90;
+  rocks.push({
+    x:Math.max(18,Math.min(W-18,cx+side*off)),
+    y:-22, r:10+Math.random()*8,
+    nm:false, hit:false
+  });
+}
+
+// ─── Particle pool ───────────────────────────────────────────────────────────
+const POOL=400;
+const pool=Array.from({length:POOL},()=>({on:false}));
+
+function emit(x,y,vx,vy,life,sz,hue,a,type){
+  for(let i=0;i<POOL;i++){
+    if(!pool[i].on){
+      const p=pool[i];
+      p.on=true; p.x=x; p.y=y; p.vx=vx; p.vy=vy;
+      p.life=life; p.ml=life; p.sz=sz;
+      p.hue=hue; p.a=a; p.type=type;
+      return;
+    }
+  }
+}
+
+function emitSand(x,y){
+  const n=hold?5:2;
+  for(let i=0;i<n;i++){
+    const a=Math.PI+(Math.random()-0.5)*1.3;
+    const s=1+Math.random()*2.5;
+    emit(x+(Math.random()-.5)*8, y+(Math.random()-.5)*4,
+         Math.cos(a)*s, Math.sin(a)*s-.4,
+         18+Math.random()*18, 2+Math.random()*2.5,
+         hue(), 0.75, 'sand');
+  }
+}
+
+function emitBurst(x,y){
+  for(let i=0;i<26;i++){
+    const a=Math.random()*Math.PI*2, s=1+Math.random()*4;
+    emit(x,y,Math.cos(a)*s,Math.sin(a)*s,
+         22+Math.random()*22,3+Math.random()*4,hue(),0.9,'burst');
+  }
+}
+
+function emitDust(x,y){
+  for(let i=0;i<45;i++){
+    const a=Math.random()*Math.PI*2, s=.5+Math.random()*3;
+    emit(x+(Math.random()-.5)*22,y+(Math.random()-.5)*12,
+         Math.cos(a)*s,Math.sin(a)*s-1,
+         28+Math.random()*30,4+Math.random()*6,36,.85,'dust');
+  }
+}
+
+function emitSpeed(x,y){
+  emit(x,y,0,3+Math.random()*3,10+Math.random()*8,1,hue(),.45,'spd');
+}
+
+// ─── Colour ───────────────────────────────────────────────────────────────────
+let startHue=30;
+function hue(){
+  if(state!==S.PLAY) return startHue;
+  return 30+Math.min(combo-1,10)/10*240;
+}
+
+// ─── Init game ────────────────────────────────────────────────────────────────
+function startGame(){
+  state=S.PLAY;
+  score=0; combo=1; bestCombo=1;
+  offCrestSec=0; crestSec=0; totalSec=0;
+  gameSpd=1; diffSec=0;
+  crestSpd=3; curvature=0.016;
+  gateTimer=80; gateInterval=220;
+  rockTimer=50; rockInterval=110;
+  cwIntensity=0; cwActive=0; cwWarn=0;
+  hitStop=0; shake=0;
+  gates=[]; rocks=[];
+  for(const p of pool) p.on=false;
+  btnA=null; btnB=null;
+  initCrest();
+  initPlayer();
+  lastTS=performance.now();
+}
+
+// ─── Loop ────────────────────────────────────────────────────────────────────
+let lastTS=performance.now();
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  const raw=ts-lastTS; lastTS=ts;
+  const dt=Math.min(raw/16.667,2.5);
+
+  startHue=(startHue+0.35)%360;
+
+  if(state===S.PLAY){
+    if(hitStop>0){ hitStop--; draw(); return; }
+    update(dt);
+  }
+  draw();
+}
+
+// ─── Update ───────────────────────────────────────────────────────────────────
+function update(dt){
+  const sec=dt/60;
+  totalSec+=sec;
+
+  // Difficulty
+  diffSec+=sec;
+  gameSpd   =1+diffSec*0.042;
+  curvature =0.016+diffSec*0.0009;
+  crestSpd  =3+diffSec*0.13;
+  gateInterval=Math.max(95,220-diffSec*3);
+  rockInterval=Math.max(52,110-diffSec*2);
+
+  // Crosswind scheduling
+  if(cwWarn>0){
+    cwWarn-=sec;
+    if(cwWarn<=0){
+      cwIntensity=.6+Math.random()*.4;
+      cwDir=Math.random()<.5?-1:1;
+      cwActive=3+Math.random()*3;
+    }
+  }
+  if(cwActive>0){
+    cwActive-=sec;
+    if(cwActive<=0) cwIntensity=0;
+  }
+  if(diffSec>10&&cwIntensity===0&&cwActive<=0&&cwWarn<=0){
+    if(Math.random()<0.016*dt) cwWarn=1.4+Math.random();
+  }
+
+  // Scroll crest
+  crestOff+=crestSpd*gameSpd*dt/SEG_H;
+  while(crestOff>=1){ crestOff--; stepCrest(); }
+
+  // Player steering
+  const cx=crestAt(py);
+  const dx=cx-px;
+  const onCrest=Math.abs(dx)<42;
+
+  const steer=hold?0.19:0.08;
+  pvx+=dx*steer*dt;
+  pvx*=hold?.82:.89;
+
+  // Crosswind drift
+  if(cwIntensity>0) pvx+=cwDir*cwIntensity*(hold?.55:2.1)*dt;
+
+  px+=pvx*dt;
+  px=Math.max(12,Math.min(W-12,px));
+
+  // Score
+  if(onCrest){
+    crestSec+=sec;
+    score+=(sec*55+.55*combo)*combo;
+    offCrestSec=0;
+  } else {
+    score+=sec*16;
+    offCrestSec+=sec;
+    if(offCrestSec>OFF_RESET){ combo=Math.max(1,combo-1); offCrestSec=0; }
+  }
+
+  // Sand spray
+  if(onCrest) emitSand(px,py);
+  if(!hold&&gameSpd>1.5&&Math.random()<.4) emitSpeed(px+(Math.random()-.5)*22,py-10-Math.random()*28);
+
+  // Gates
+  gateTimer-=dt;
+  if(gateTimer<=0){ spawnGate(); gateTimer=gateInterval; }
+  for(let i=gates.length-1;i>=0;i--){
+    const g=gates[i];
+    g.y+=crestSpd*gameSpd*dt;
+    if(g.flash>0) g.flash-=dt;
+    if(!g.passed&&g.y+20>=py-10){
+      g.passed=true;
+      const left=g.x-g.w/2, right=g.x+g.w/2;
+      if(px>=left&&px<=right){
+        combo=Math.min(combo+1,14);
+        if(combo>bestCombo) bestCombo=combo;
+        const centDist=Math.abs(px-g.x);
+        if(centDist<g.w*.16){ hitStop=2; score+=140*combo; }
+        else score+=45*combo;
+        g.flash=7; shake=2.5;
+        emitBurst(g.x,g.y);
+      } else {
+        combo=1;
+      }
+    }
+    if(g.y>H+55) gates.splice(i,1);
+  }
+
+  // Rocks
+  rockTimer-=dt;
+  if(rockTimer<=0){ spawnRock(); rockTimer=rockInterval; }
+  for(let i=rocks.length-1;i>=0;i--){
+    const r=rocks[i];
+    r.y+=crestSpd*gameSpd*dt;
+    const ddx=px-r.x, ddy=py-r.y;
+    const dist=Math.sqrt(ddx*ddx+ddy*ddy);
+    if(dist<r.r+9&&!r.hit){ r.hit=true; crash(); return; }
+    if(!r.nm&&dist<r.r+38&&dist>r.r+9&&r.y>0){
+      r.nm=true; score+=28*combo; emitBurst(r.x,r.y);
+    }
+    if(r.y>H+32) rocks.splice(i,1);
+  }
+
+  // Particles
+  for(const p of pool){
+    if(!p.on) continue;
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.06;
+    p.life-=dt;
+    if(p.life<=0) p.on=false;
+  }
+
+  // Shake
+  if(shake>0.3) shake*=.84;
+
+  // Toast
+  if(toastLife>0) toastLife-=dt;
+}
+
+// ─── Crash ────────────────────────────────────────────────────────────────────
+function crash(){
+  state=S.OVER; shake=12;
+  emitDust(px,py);
+  const sc=Math.floor(score);
+  if(sc>bestScore){ bestScore=sc; localStorage.setItem('dd_best',sc); }
+  if(bestCombo>bestComboEver){ bestComboEver=bestCombo; localStorage.setItem('dd_bestcombo',bestCombo); }
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────────────────
+function draw(){
+  const h=hue();
+  let sx=0,sy=0;
+  if(shake>0.3){ sx=(Math.random()-.5)*shake*2; sy=(Math.random()-.5)*shake*2; }
+
+  ctx.save();
+  ctx.translate(sx,sy);
+
+  drawBg(h);
+  if(state===S.START){ drawStart(h); }
+  else {
+    drawCrosswindFX(h);
+    drawCrest(h);
+    drawGates(h);
+    drawRocks();
+    drawParticles();
+    if(state===S.PLAY){ drawPlayer(h); drawHUD(h); }
+    else { drawPlayer(h); drawOver(h); }
+  }
+  if(toastLife>0) drawToast();
+
+  ctx.restore();
+}
+
+function drawBg(h){
+  const sg=ctx.createLinearGradient(0,0,0,H*.46);
+  sg.addColorStop(0,'#0d0500');
+  sg.addColorStop(1,`hsl(${h*.3+10},28%,9%)`);
+  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H*.46);
+
+  const dg=ctx.createLinearGradient(0,H*.46,0,H);
+  dg.addColorStop(0,`hsl(${h*.5+22},38%,13%)`);
+  dg.addColorStop(1,`hsl(${h*.4+18},46%,7%)`);
+  ctx.fillStyle=dg; ctx.fillRect(0,H*.46,W,H*.54);
+
+  if(bgPat){
+    ctx.globalAlpha=.07;
+    ctx.fillStyle=bgPat;
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha=1;
+  }
+
+  ctx.strokeStyle=`hsla(${h*.3+14},45%,28%,.4)`;
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,H*.46); ctx.lineTo(W,H*.46); ctx.stroke();
+}
+
+function drawCrosswindFX(h){
+  const now=performance.now();
+  if(cwWarn>0){
+    const pulse=Math.sin(now/110)*.3+.35;
+    ctx.strokeStyle=`rgba(255,200,50,${pulse})`;
+    ctx.lineWidth=1.2;
+    for(let i=0;i<9;i++){
+      const ox=((now*cwDir*.06)%W+i*(W/8));
+      ctx.beginPath();
+      ctx.moveTo(ox%W, H*.18+i*14);
+      ctx.lineTo((ox+cwDir*35)%W, H*.18+i*14+6);
+      ctx.stroke();
+    }
+  }
+  if(cwIntensity>0){
+    ctx.strokeStyle=`rgba(255,195,75,.13)`;
+    ctx.lineWidth=1;
+    for(let i=0;i<6;i++){
+      const ox=((now*cwDir*.09)%W+i*(W/5));
+      ctx.beginPath();
+      ctx.moveTo(ox%W, H*.28+i*20);
+      ctx.lineTo((ox+cwDir*55)%W, H*.28+i*20+9);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawCrest(h){
+  const step=5;
+  ctx.save();
+  // Wide glow
+  ctx.strokeStyle=`hsla(${h},75%,65%,.18)`;
+  ctx.lineWidth=14;
+  ctx.beginPath();
+  for(let y=H;y>=0;y-=step){
+    const x=crestAt(y);
+    y===H?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // Core line
+  ctx.shadowColor=`hsl(${h},100%,70%)`;
+  ctx.shadowBlur=14;
+  ctx.strokeStyle=`hsl(${h},82%,62%)`;
+  ctx.lineWidth=2.5;
+  ctx.beginPath();
+  for(let y=H;y>=0;y-=step){
+    const x=crestAt(y);
+    y===H?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGates(h){
+  for(const g of gates){
+    const fl=g.flash>0?Math.min(1,g.flash/5):0;
+    const hw=g.w/2;
+    const pc=`hsl(${h+30},68%,${48+fl*42}%)`;
+
+    ctx.save();
+    ctx.shadowColor=`hsl(${h+30},80%,68%)`;
+    ctx.shadowBlur=8;
+    ctx.fillStyle=pc;
+    ctx.fillRect(g.x-hw-5, g.y-32, 6, 42);
+    ctx.fillRect(g.x+hw-1, g.y-32, 6, 42);
+    ctx.restore();
+
+    const bg=ctx.createLinearGradient(g.x-hw,0,g.x+hw,0);
+    bg.addColorStop(0,`hsla(${h},80%,58%,.82)`);
+    bg.addColorStop(1,`hsla(${h+55},80%,58%,.82)`);
+    ctx.fillStyle=bg;
+    ctx.fillRect(g.x-hw, g.y-34, g.w, 5);
+
+    const gg=ctx.createLinearGradient(g.x-hw,0,g.x+hw,0);
+    gg.addColorStop(0,`hsla(${h},100%,80%,0)`);
+    gg.addColorStop(.5,`hsla(${h},100%,80%,${.12+fl*.32})`);
+    gg.addColorStop(1,`hsla(${h},100%,80%,0)`);
+    ctx.fillStyle=gg;
+    ctx.fillRect(g.x-hw, g.y-30, g.w, 38);
+  }
+}
+
+function drawRocks(){
+  for(const r of rocks){
+    const rg=ctx.createRadialGradient(r.x-r.r*.3,r.y-r.r*.3,0,r.x,r.y,r.r);
+    rg.addColorStop(0,'rgba(115,82,52,.96)');
+    rg.addColorStop(1,'rgba(38,22,8,.97)');
+    ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
+    ctx.fillStyle=rg; ctx.fill();
+    ctx.strokeStyle='rgba(175,118,58,.4)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(r.x+3,r.y+r.r*.8,r.r*.8,r.r*.22,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fill();
+  }
+}
+
+function drawPlayer(h){
+  ctx.save();
+  ctx.translate(px,py);
+  const tilt=pvx*.6;
+
+  // Board
+  ctx.save();
+  ctx.rotate(tilt*.042);
+  const blen=hold?30:25;
+  const bg=ctx.createLinearGradient(-blen*.5,-4,blen*.5,4);
+  bg.addColorStop(0,`hsl(${h},72%,58%)`);
+  bg.addColorStop(1,`hsl(${h+30},58%,33%)`);
+  ctx.shadowColor=`hsl(${h},100%,72%)`;
+  ctx.shadowBlur=hold?16:6;
+  ctx.fillStyle=bg;
+  ctx.beginPath();
+  ctx.ellipse(0,2,blen*.5,5,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Rider head
+  ctx.shadowColor=`hsl(${h},100%,82%)`;
+  ctx.shadowBlur=8;
+  ctx.fillStyle=`hsl(${h+18},62%,72%)`;
+  ctx.beginPath(); ctx.arc(0,-11,7,0,Math.PI*2); ctx.fill();
+
+  // Body
+  ctx.fillStyle=`hsl(${h+8},58%,54%)`;
+  ctx.beginPath();
+  ctx.moveTo(0,-5); ctx.lineTo(-5,4); ctx.lineTo(5,4);
+  ctx.closePath(); ctx.fill();
+
+  // Carve arc
+  if(hold){
+    ctx.strokeStyle=`hsla(${h},100%,82%,.5)`;
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(0,0,20,Math.PI*.55,Math.PI*1.45);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawParticles(){
+  for(const p of pool){
+    if(!p.on) continue;
+    const t=p.life/p.ml;
+    let a=p.a;
+    if(p.type==='spd') a*=t;
+    else a*=Math.min(t*3,1)*t;
+    ctx.globalAlpha=Math.max(0,a);
+    if(p.type==='spd'){
+      ctx.strokeStyle=`hsl(${p.hue},78%,68%)`;
+      ctx.lineWidth=p.sz;
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y); ctx.lineTo(p.x,p.y-14*t);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle=`hsl(${p.hue+(1-t)*22},68%,${48+t*22}%)`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,Math.max(.2,p.sz*t),0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(h){
+  const sc=Math.floor(score);
+  ctx.textAlign='center';
+  ctx.shadowColor=`hsl(${h},78%,48%)`; ctx.shadowBlur=8;
+  ctx.fillStyle='rgba(255,255,255,.92)';
+  ctx.font='bold 30px system-ui';
+  ctx.fillText(sc.toLocaleString(), W/2, 46);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,.38)';
+  ctx.font='13px system-ui';
+  ctx.fillText('Best '+bestScore.toLocaleString(), W/2, 66);
+  if(combo>1){
+    ctx.font=`bold ${16+combo*.8}px system-ui`;
+    ctx.fillStyle=`hsl(${h},88%,66%)`;
+    ctx.shadowColor=`hsl(${h},100%,70%)`; ctx.shadowBlur=12;
+    ctx.fillText('×'+combo, W-42, 44);
+    ctx.shadowBlur=0;
+  }
+}
+
+function drawOver(h){
+  ctx.fillStyle='rgba(0,0,0,.62)';
+  ctx.fillRect(0,0,W,H);
+
+  const cx=W/2;
+  ctx.textAlign='center';
+
+  ctx.font='bold 38px system-ui';
+  ctx.fillStyle=`hsl(${h},78%,64%)`;
+  ctx.shadowColor=`hsl(${h},100%,58%)`; ctx.shadowBlur=18;
+  ctx.fillText('WIPED OUT',cx,H*.26);
+  ctx.shadowBlur=0;
+
+  ctx.font='bold 54px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.95)';
+  ctx.fillText(Math.floor(score).toLocaleString(),cx,H*.38);
+
+  ctx.font='15px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.42)';
+  ctx.fillText('Best: '+bestScore.toLocaleString(),cx,H*.445);
+
+  const cpct=totalSec>0?Math.round(crestSec/totalSec*100):0;
+  ctx.font='14px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.58)';
+  ctx.fillText(`Crest time ${cpct}%  ·  Best combo ×${bestCombo}`,cx,H*.51);
+
+  ctx.font='15px system-ui';
+  ctx.fillStyle=`hsl(${h},68%,78%)`;
+  ctx.fillText('Tap to Retry',cx,H*.58);
+
+  // Buttons
+  const bw=146,bh=44,gap=12;
+  const by=H*.64;
+  const bx1=cx-bw-gap/2, bx2=cx+gap/2;
+  drawBtn(bx1,by,bw,bh,'Share Score',h);
+  drawBtn(bx2,by,bw,bh,'Challenge Friend',h+58);
+  btnA={x:bx1,y:by,w:bw,h:bh};
+  btnB={x:bx2,y:by,w:bw,h:bh};
+}
+
+function drawBtn(x,y,w,h,label,hue){
+  ctx.save();
+  rrect(x,y,w,h,10);
+  ctx.fillStyle=`hsla(${hue},58%,28%,.88)`; ctx.fill();
+  ctx.strokeStyle=`hsl(${hue},68%,54%)`; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle=`hsl(${hue},78%,80%)`;
+  ctx.font='13px system-ui'; ctx.textAlign='center';
+  ctx.fillText(label,x+w/2,y+h/2+5);
+  ctx.restore();
+}
+
+function rrect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function drawStart(h){
+  ctx.textAlign='center';
+  const cx=W/2;
+
+  ctx.font='bold 56px system-ui';
+  ctx.fillStyle=`hsl(${h},84%,64%)`;
+  ctx.shadowColor=`hsl(${h},100%,60%)`; ctx.shadowBlur=22;
+  ctx.fillText('DUNE DRIFT',cx,H*.37);
+  ctx.shadowBlur=0;
+
+  ctx.font='14px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.52)';
+  ctx.fillText('Ride the crest. Thread the gates.',cx,H*.445);
+
+  const pulse=Math.sin(performance.now()/480)*.28+.72;
+  ctx.globalAlpha=pulse;
+  ctx.font='18px system-ui';
+  ctx.fillStyle=`hsl(${h},78%,76%)`;
+  ctx.fillText('Tap to Start',cx,H*.58);
+  ctx.globalAlpha=1;
+
+  ctx.font='12px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.28)';
+  ctx.fillText('Hold = Carve tight  ·  Release = Glide fast',cx,H*.665);
+  ctx.fillText('Wind Gates → combo  ·  Rocks = game over',cx,H*.70);
+  if(bestScore>0){
+    ctx.fillStyle='rgba(255,255,255,.38)';
+    ctx.fillText('Best: '+bestScore.toLocaleString(),cx,H*.76);
+  }
+}
+
+function drawToast(){
+  const a=Math.min(toastLife/20,1);
+  ctx.globalAlpha=a;
+  ctx.textAlign='center';
+  ctx.font='bold 15px system-ui';
+  ctx.fillStyle='rgba(255,255,255,.9)';
+  ctx.fillText(toastMsg, W/2, H*.88);
+  ctx.globalAlpha=1;
+}
+
+// ─── Share ────────────────────────────────────────────────────────────────────
+function doShare(challenge){
+  const base='https://balinti.github.io/dune-drift/';
+  const url=`${base}?s=${Math.floor(score)}&c=${bestCombo}${challenge?'&mode=challenge':''}`;
+  const txt=challenge
+    ?`Can you beat my Dune Drift score of ${Math.floor(score).toLocaleString()}? ×${bestCombo} combo!`
+    :`I scored ${Math.floor(score).toLocaleString()} in Dune Drift with a ×${bestCombo} combo!`;
+  if(navigator.share){
+    navigator.share({title:'Dune Drift',text:txt,url}).catch(()=>{});
+  } else {
+    const full=`${txt}\n${url}`;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(full).then(()=>toast('Link copied!')).catch(()=>toast('Copy: '+url));
+    } else {
+      const ta=document.createElement('textarea');
+      ta.value=full; ta.style.cssText='position:absolute;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast('Link copied!'); } catch(e){ toast('Copy failed'); }
+      document.body.removeChild(ta);
+    }
+  }
+}
+
+function toast(msg){ toastMsg=msg; toastLife=130; }
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+resize();
+lastTS=performance.now();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
